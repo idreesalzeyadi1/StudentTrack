@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Overview — StudentTrack</title>
+<link rel="stylesheet" href="../css/app.css"/>
+<style>
+  body::before {
+    content:'';position:fixed;inset:0;
+    background-image:linear-gradient(rgba(45,212,191,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(45,212,191,0.02) 1px,transparent 1px);
+    background-size:48px 48px;pointer-events:none;
+  }
+  .subj-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .subj-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .subj-name { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }
+  .subj-score { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 700; }
+  .subj-teacher { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .rank-1 { color: var(--amber); }
+  .rank-2 { color: var(--muted); }
+  .rank-3 { color: #cd7f32; }
+  .test-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    margin: 1px;
+  }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-brand">Student<span>Track</span></div>
+  <div class="nav-right">
+    <!-- Class dropdown -->
+    <select class="nav-select" id="class-dropdown" onchange="onClassChange(this.value)">
+      <option value="">Select class</option>
+    </select>
+    <!-- Subject dropdown -->
+    <select class="nav-select" id="subj-dropdown" onchange="loadOverview()" style="display:none;">
+      <option value="">All subjects</option>
+    </select>
+    <button class="sign-out" onclick="handleSignOut()">Sign out</button>
+  </div>
+</nav>
+
+<div class="page-wrap fade-in">
+  <div class="page-header">
+    <div class="page-title" id="ov-title">Class <span>Overview</span></div>
+    <div class="page-sub" id="ov-sub">Select a class to view the full report</div>
+  </div>
+
+  <div id="ov-content" style="display:none;">
+    <!-- Stats -->
+    <div class="stat-grid">
+      <div class="stat-card teal"><div class="stat-label">Students</div><div class="stat-val" id="ov-students">—</div></div>
+      <div class="stat-card purple"><div class="stat-label">Class average</div><div class="stat-val" id="ov-avg">—</div></div>
+      <div class="stat-card green"><div class="stat-label">Improving</div><div class="stat-val" id="ov-improving">—</div></div>
+      <div class="stat-card amber"><div class="stat-label">Copies checked</div><div class="stat-val" id="ov-copies">—</div></div>
+    </div>
+
+    <!-- Subject averages -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-title" style="margin-bottom:16px;">Subject-wise averages</div>
+      <div id="subj-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;"></div>
+    </div>
+
+    <!-- Student report table -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title" id="table-title">Student report</div>
+        <span style="font-size:12px;color:var(--muted);">Read only</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead id="report-thead"></thead>
+          <tbody id="report-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="empty-msg" style="text-align:center;padding:60px 24px;color:var(--muted);font-size:14px;">
+    Select a class from the dropdown above
+  </div>
+</div>
+
+<script type="module">
+import { auth, db } from '../js/firebase-config.js';
+import { doSignOut, toast } from '../js/utils.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+window.handleSignOut = doSignOut;
+
+let allAssignments = [], allStudents = [], resultsMap = {}, currentClass = '';
+
+async function init() {
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = '../index.html'; return; }
+
+    const snap = await getDocs(collection(db, 'assignments'));
+    const classes = [...new Set(snap.docs.map(d => `${d.data().class} ${d.data().section}`))].sort();
+
+    const sel = document.getElementById('class-dropdown');
+    sel.innerHTML = '<option value="">Select class</option>';
+    classes.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c;
+      o.textContent = `Class ${c}`;
+      sel.appendChild(o);
+    });
+  });
+}
+
+window.onClassChange = async function(classKey) {
+  if (!classKey) return;
+  currentClass = classKey;
+  const [cls, sec] = classKey.split(' ');
+
+  // Load assignments for this class
+  const [studSnap, asnap] = await Promise.all([
+    getDocs(query(collection(db,'students'), where('class','==',cls), where('section','==',sec))),
+    getDocs(query(collection(db,'assignments'), where('class','==',cls), where('section','==',sec)))
+  ]);
+
+  allStudents    = studSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.rollNo||'').localeCompare(b.rollNo||''));
+  allAssignments = asnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // Populate subject dropdown
+  const subjSel = document.getElementById('subj-dropdown');
+  subjSel.innerHTML = '<option value="">All subjects</option>';
+  allAssignments.forEach(a => {
+    const o = document.createElement('option');
+    o.value = a.id;
+    o.textContent = a.subject;
+    subjSel.appendChild(o);
+  });
+  subjSel.style.display = 'block';
+
+  // Load all results
+  resultsMap = {};
+  await Promise.all(allAssignments.map(async a => {
+    const snap = await getDocs(collection(db,'results',a.id,'students'));
+    snap.docs.forEach(d => {
+      if (!resultsMap[d.id]) resultsMap[d.id] = {};
+      resultsMap[d.id][a.id] = d.data();
+    });
+  }));
+
+  loadOverview();
+};
+
+window.loadOverview = function() {
+  const classKey  = currentClass;
+  const subjId    = document.getElementById('subj-dropdown').value;
+  const [cls, sec] = classKey.split(' ');
+
+  // Filter assignments based on subject selection
+  const activeAssignments = subjId
+    ? allAssignments.filter(a => a.id === subjId)
+    : allAssignments;
+
+  document.getElementById('ov-title').innerHTML = `Class ${cls} ${sec} — <span>Overview</span>`;
+  document.getElementById('ov-sub').textContent = subjId
+    ? `Showing: ${activeAssignments[0]?.subject} — Class ${cls} ${sec}`
+    : `All subjects — Class ${cls} ${sec}`;
+  document.getElementById('ov-content').style.display = 'block';
+  document.getElementById('empty-msg').style.display  = 'none';
+  document.getElementById('ov-students').textContent  = allStudents.length;
+
+  // Stats
+  let totalAvg = 0, avgCount = 0, improving = 0, copiesChecked = 0;
+  const subjTotals = {};
+
+  // TESTS will be loaded dynamically per assignment
+
+  allStudents.forEach(s => {
+    activeAssignments.forEach(a => {
+      const r = resultsMap[s.id]?.[a.id] || {};
+      const aTests = a.tests || [];
+      aTests.forEach(t => {
+        const v = r.marks?.[t.key];
+        const total = r.testTotals?.[t.key] || t.total || 20;
+        if (v !== undefined) {
+          const pct = v / total * 100;
+          totalAvg += pct; avgCount++;
+          if (!subjTotals[a.id]) subjTotals[a.id] = { sum: 0, count: 0, teacher: a.teacherName, subject: a.subject };
+          subjTotals[a.id].sum += pct;
+          subjTotals[a.id].count++;
+        }
+      });
+      if (r.trend === 'improving') improving++;
+      if (r.copyStatus === 'checked') copiesChecked++;
+    });
+  });
+
+  document.getElementById('ov-avg').textContent      = avgCount ? Math.round(totalAvg/avgCount)+'%' : '—';
+  document.getElementById('ov-improving').textContent = improving;
+  document.getElementById('ov-copies').textContent    = copiesChecked;
+
+  // Subject cards
+  const subjGrid = document.getElementById('subj-grid');
+  subjGrid.innerHTML = Object.entries(subjTotals).map(([id, data]) => {
+    const avg   = data.count ? Math.round(data.sum / data.count) : 0;
+    const color = avg >= 70 ? 'var(--green)' : avg >= 50 ? 'var(--amber)' : 'var(--red)';
+    return `<div class="subj-card">
+      <div class="subj-name">${data.subject}</div>
+      <div class="subj-score" style="color:${color}">${avg}%</div>
+      <div class="subj-teacher">${data.teacher || '—'}</div>
+      <div class="prog-wrap" style="margin-top:8px;"><div class="prog-fill" style="width:${avg}%"></div></div>
+    </div>`;
+  }).join('') || '<div style="color:var(--muted);font-size:13px;padding:12px;">No results yet</div>';
+
+  // Table — columns depend on subject selection
+  const thead = document.getElementById('report-thead');
+  const tbody = document.getElementById('report-tbody');
+
+  if (subjId && activeAssignments.length === 1) {
+    // Single subject selected — show all dynamic tests as columns
+    const a = activeAssignments[0];
+    // Get test definitions from assignment
+    const dynTests = a.tests || [];
+    const TESTS = dynTests.map(t => t.key);
+    const testNames = dynTests.map(t => t.name);
+
+    if (TESTS.length === 0) {
+      document.getElementById('table-title').textContent = `${a.subject} — No tests added yet`;
+      thead.innerHTML = `<tr><th>Roll no</th><th>Student</th><th colspan="5" style="color:var(--muted)">No tests added by teacher yet</th></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:28px;">Teacher ne abhi koi test add nahi kiya</td></tr>`;
+      return;
+    }
+
+    document.getElementById('table-title').textContent = `${a.subject} — All tests (${TESTS.length} total)`;
+    thead.innerHTML = `<tr>
+      <th>Roll no</th><th>Student</th>
+      ${testNames.map(n => `<th>${n}</th>`).join('')}
+      <th>Avg %</th><th>Copy</th><th>Trend</th>
+    </tr>`;
+
+    const rows = allStudents.map(s => {
+      const r     = resultsMap[s.id]?.[a.id] || {};
+      let sumPct  = 0, cnt = 0;
+
+      const testCells = TESTS.map((tKey, i) => {
+        const v     = r.marks?.[tKey];
+        const total = r.testTotals?.[tKey] || dynTests[i]?.total || 20;
+        if (v !== undefined) {
+          const pct = Math.round(v/total*100);
+          sumPct += pct; cnt++;
+          const color = pct>=70?'var(--green)':pct>=50?'var(--amber)':'var(--red)';
+          return `<td><span class="test-chip" style="color:${color}">${v}/${total}</span></td>`;
+        }
+        return `<td style="color:var(--muted)">—</td>`;
+      }).join('');
+
+      const avg = cnt ? Math.round(sumPct/cnt) : null;
+      const copyStatus = r.copyStatus || 'pending';
+      const copyBadge  = copyStatus==='checked'?'badge-teal':copyStatus==='not_submitted'?'badge-red':'badge-amber';
+      const copyLabel  = copyStatus==='checked'?'✓':copyStatus==='not_submitted'?'✗':'…';
+      const trend      = r.trend || 'stable';
+      const trendBadge = trend==='improving'?'badge-green':trend==='declining'?'badge-red':'badge-amber';
+
+      return { avg: avg||0, html: `<tr>
+        <td style="color:var(--muted);font-size:12px;">${s.rollNo||'—'}</td>
+        <td>${s.name}</td>
+        ${testCells}
+        <td style="font-weight:600;color:${avg!==null?(avg>=70?'var(--green)':avg>=50?'var(--amber)':'var(--red)'):'var(--muted)'}">${avg!==null?avg+'%':'—'}</td>
+        <td><span class="badge ${copyBadge}">${copyLabel}</span></td>
+        <td><span class="badge ${trendBadge}">${trend}</span></td>
+      </tr>` };
+    });
+
+    rows.sort((a,b) => b.avg - a.avg);
+    tbody.innerHTML = rows.map(r=>r.html).join('') ||
+      '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:28px;">No data</td></tr>';
+
+  } else {
+    // All subjects — show subject columns with avg of all tests
+    document.getElementById('table-title').textContent = 'Student report — all subjects';
+    thead.innerHTML = `<tr>
+      <th>Roll no</th><th>Student</th>
+      ${activeAssignments.map(a=>`<th>${a.subject}</th>`).join('')}
+      <th>Overall avg</th><th>Trend</th>
+    </tr>`;
+
+    const rows = allStudents.map(s => {
+      let overallSum = 0, overallCnt = 0;
+
+      const subjCells = activeAssignments.map(a => {
+        const r      = resultsMap[s.id]?.[a.id] || {};
+        const aTests = a.tests || [];
+        let sum = 0, cnt = 0;
+        aTests.forEach(t => {
+          const v = r.marks?.[t.key];
+          const total = r.testTotals?.[t.key] || t.total || 20;
+          if (v !== undefined) { sum += v/total*100; cnt++; }
+        });
+        if (cnt) { overallSum += sum/cnt; overallCnt++; }
+        const avg = cnt ? Math.round(sum/cnt) : null;
+        const color = avg===null?'var(--muted)':avg>=70?'var(--green)':avg>=50?'var(--amber)':'var(--red)';
+        const testMarks = aTests.map(t => {
+          const v = r.marks?.[t.key];
+          return v !== undefined ? `${v}` : null;
+        }).filter(Boolean).join(' / ');
+        return `<td style="color:${color};font-size:12px;">${testMarks || '—'}</td>`;
+      }).join('');
+
+      const overall = overallCnt ? Math.round(overallSum/overallCnt) : null;
+      const trends  = activeAssignments.map(a => resultsMap[s.id]?.[a.id]?.trend).filter(Boolean);
+      const imp     = trends.filter(t=>t==='improving').length;
+      const dec     = trends.filter(t=>t==='declining').length;
+      const dominant = imp > dec ? 'improving' : dec > imp ? 'declining' : 'stable';
+      const trendBadge = dominant==='improving'?'badge-green':dominant==='declining'?'badge-red':'badge-amber';
+
+      return { avg: overall||0, html: `<tr>
+        <td style="color:var(--muted);font-size:12px;">${s.rollNo||'—'}</td>
+        <td>${s.name}</td>
+        ${subjCells}
+        <td style="font-weight:700;font-family:'Syne',sans-serif;color:${overall!==null?(overall>=70?'var(--green)':overall>=50?'var(--amber)':'var(--red)'):'var(--muted)'}">${overall!==null?overall+'%':'—'}</td>
+        <td><span class="badge ${trendBadge}">${dominant}</span></td>
+      </tr>` };
+    });
+
+    rows.sort((a,b) => b.avg - a.avg);
+    tbody.innerHTML = rows.map(r=>r.html).join('') ||
+      '<tr><td colspan="20" style="text-align:center;color:var(--muted);padding:28px;">No data yet</td></tr>';
+  }
+};
+
+init();
+</script>
+</body>
+</html>

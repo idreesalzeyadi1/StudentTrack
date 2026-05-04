@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Admin — StudentTrack</title>
+<link rel="stylesheet" href="../css/app.css"/>
+<style>
+  body { background: var(--bg); }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,106,247,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,106,247,0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 18px;
+    padding: 28px;
+    width: 100%;
+    max-width: 460px;
+    animation: slideUp 0.3s cubic-bezier(.16,1,.3,1) both;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .modal-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 20px;
+  }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  .class-btn { padding: 7px 16px; border: 1px solid var(--border2); border-radius: 10px; background: var(--surface2); color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+  .class-btn:hover { border-color: var(--accent); color: var(--accent2); }
+  .class-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-brand">Student<span>Track</span></div>
+  <div class="nav-right">
+    <div class="avatar av-purple" id="av-initials">SA</div>
+    <span class="nav-name" id="admin-name">Admin</span>
+    <button class="sign-out" onclick="handleSignOut()">Sign out</button>
+  </div>
+</nav>
+
+<div class="page-wrap fade-in">
+  <div class="page-header">
+    <div class="page-title">Admin <span>Dashboard</span></div>
+    <div class="page-sub">Manage teachers, students and class assignments</div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card purple">
+      <div class="stat-label">Teachers</div>
+      <div class="stat-val" id="stat-teachers">—</div>
+    </div>
+    <div class="stat-card teal">
+      <div class="stat-label">Students</div>
+      <div class="stat-val" id="stat-students">—</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-label">Classes</div>
+      <div class="stat-val" id="stat-classes">—</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Assignments</div>
+      <div class="stat-val" id="stat-assignments">—</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab(this,'tab-teachers')">Teachers</button>
+    <button class="tab-btn" onclick="switchTab(this,'tab-students')">Students</button>
+    <button class="tab-btn" onclick="switchTab(this,'tab-assign')">Assign class</button>
+    <button class="tab-btn" onclick="window.location.href='overview.html'">Class overview ↗</button>
+  </div>
+
+  <!-- TEACHERS TAB -->
+  <div id="tab-teachers" class="tab-pane active">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">All teachers</div>
+        <button class="btn btn-primary btn-sm" onclick="openModal('modal-teacher')">+ Add teacher</button>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Name</th><th>Email</th><th>Assigned classes</th><th>Status</th><th></th></tr></thead>
+        <tbody id="teachers-tbody">
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:28px;">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- STUDENTS TAB -->
+  <div id="tab-students" class="tab-pane">
+    <!-- Class buttons -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px;">Select class</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;" id="class-btns">
+        <button class="class-btn" onclick="selectClass(this,'Playgroup')">Playgroup</button>
+        <button class="class-btn" onclick="selectClass(this,'Nursery')">Nursery</button>
+        <button class="class-btn" onclick="selectClass(this,'Prep')">Prep</button>
+        <button class="class-btn" onclick="selectClass(this,'1st')">1st</button>
+        <button class="class-btn" onclick="selectClass(this,'2nd')">2nd</button>
+        <button class="class-btn" onclick="selectClass(this,'3rd')">3rd</button>
+        <button class="class-btn" onclick="selectClass(this,'4th')">4th</button>
+        <button class="class-btn" onclick="selectClass(this,'5th')">5th</button>
+        <button class="class-btn" onclick="selectClass(this,'6th')">6th</button>
+        <button class="class-btn" onclick="selectClass(this,'7th')">7th</button>
+        <button class="class-btn" onclick="selectClass(this,'8th')">8th</button>
+        <button class="class-btn" onclick="selectClass(this,'9th')">9th</button>
+        <button class="class-btn" onclick="selectClass(this,'10th')">10th</button>
+      </div>
+    </div>
+    <!-- Section buttons -->
+    <div id="section-row" style="display:none;margin-bottom:14px;">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px;">Select section</div>
+      <div style="display:flex;gap:8px;">
+        <button class="class-btn" onclick="selectSection(this,'A')">Section A</button>
+        <button class="class-btn" onclick="selectSection(this,'B')">Section B</button>
+        <button class="class-btn" onclick="selectSection(this,'C')">Section C</button>
+      </div>
+    </div>
+    <!-- Students table -->
+    <div class="card" id="students-card" style="display:none;">
+      <div class="card-header">
+        <div class="card-title" id="students-card-title">Students</div>
+        <button class="btn btn-primary btn-sm" onclick="openModal('modal-student')">+ Add student</button>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Roll no</th><th>Name</th><th>Class</th><th>Section</th><th></th></tr></thead>
+        <tbody id="students-tbody">
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:28px;">Select a class and section</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ASSIGN TAB -->
+  <div id="tab-assign" class="tab-pane">
+    <div class="two-col" style="align-items:start;">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:18px;">Assign class + subject</div>
+        <div class="form-group">
+          <label class="form-label">Teacher</label>
+          <select class="form-select" id="assign-teacher"><option value="">Select teacher</option></select>
+        </div>
+        <div class="two-col">
+          <div class="form-group">
+            <label class="form-label">Class</label>
+            <select class="form-select" id="assign-class">
+              <option value="">Select</option>
+              <option>6th</option><option>7th</option><option>8th</option><option>9th</option><option>10th</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Section</label>
+            <select class="form-select" id="assign-section">
+              <option>A</option><option>B</option><option>C</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Subject</label>
+          <select class="form-select" id="assign-subject">
+            <option value="">Select subject</option>
+            <option>Computer Science</option><option>Mathematics</option>
+            <option>English</option><option>Physics</option>
+            <option>Chemistry</option><option>Biology</option>
+            <option>Urdu</option><option>Islamiat</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="saveAssignment()" style="width:100%;margin-top:4px;">Save assignment</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom:18px;">Current assignments</div>
+        <div id="assignments-list" style="display:flex;flex-direction:column;gap:10px;">
+          <div style="color:var(--muted);font-size:13px;">Loading…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Teacher -->
+<div class="modal-overlay" id="modal-teacher">
+  <div class="modal">
+    <div class="modal-title">Add new teacher</div>
+    <div class="form-group">
+      <label class="form-label">Full name</label>
+      <input class="form-input" id="t-name" placeholder="e.g. Mr. Ahmed"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-input" id="t-email" type="email" placeholder="teacher@school.edu"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="form-input" id="t-pass" type="password" placeholder="Min 6 characters"/>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-teacher')">Cancel</button>
+      <button class="btn btn-primary" onclick="addTeacher()">Create account</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Student -->
+<div class="modal-overlay" id="modal-student">
+  <div class="modal">
+    <div class="modal-title">Add new student</div>
+    <div class="form-group">
+      <label class="form-label">Full name</label>
+      <input class="form-input" id="s-name" placeholder="e.g. Ali Hassan"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-input" id="s-email" type="email" placeholder="student@school.edu"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="form-input" id="s-pass" type="password" placeholder="Min 6 characters"/>
+    </div>
+    <div class="two-col">
+      <div class="form-group">
+        <label class="form-label">Roll number</label>
+        <input class="form-input" id="s-roll" placeholder="e.g. 7-01"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Class</label>
+        <select class="form-select" id="s-class">
+          <option>Playgroup</option><option>Nursery</option><option>Prep</option>
+          <option>1st</option><option>2nd</option><option>3rd</option><option>4th</option>
+          <option>5th</option><option>6th</option><option>7th</option><option>8th</option>
+          <option>9th</option><option>10th</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Section</label>
+      <select class="form-select" id="s-section">
+        <option>A</option><option>B</option><option>C</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-student')">Cancel</button>
+      <button class="btn btn-primary" onclick="addStudent()">Add student</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { auth, db } from '../js/firebase-config.js';
+import { requireRole, doSignOut, toast } from '../js/utils.js';
+import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  collection, doc, setDoc, getDocs, addDoc, query, where, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+window.handleSignOut = doSignOut;
+window.openModal  = id => document.getElementById(id).classList.add('open');
+window.closeModal = id => document.getElementById(id).classList.remove('open');
+
+window.switchTab = function(btn, pane) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(pane).classList.add('active');
+};
+
+let adminAuth, teachersList = [], studentsList = [];
+
+async function init() {
+  // TEMPORARY BYPASS - requireRole disabled
+
+
+  document.getElementById('admin-name').textContent = 'Super Admin';
+  document.getElementById('av-initials').textContent = 'SA';
+  await Promise.all([loadTeachers(), loadStudents(), loadAssignments()]);
+}
+
+async function loadTeachers() {
+  const snap = await getDocs(query(collection(db, 'users'), where('role','==','teacher')));
+  teachersList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  document.getElementById('stat-teachers').textContent = teachersList.length;
+
+  const sel = document.getElementById('assign-teacher');
+  sel.innerHTML = '<option value="">Select teacher</option>';
+  teachersList.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t.id; o.textContent = t.name;
+    sel.appendChild(o);
+  });
+
+  const tbody = document.getElementById('teachers-tbody');
+  tbody.innerHTML = teachersList.length === 0
+    ? '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:28px;">No teachers added yet</td></tr>'
+    : teachersList.map(t => `
+      <tr>
+        <td><div style="display:flex;align-items:center;gap:10px;">
+          <div class="avatar av-purple" style="width:28px;height:28px;font-size:10px;">${(t.name||'?').substring(0,2).toUpperCase()}</div>
+          <span>${t.name || '—'}</span></div></td>
+        <td style="color:var(--muted)">${t.email || '—'}</td>
+        <td>${(t.assignments||[]).length} assigned</td>
+        <td><span class="badge badge-teal"><span class="dot dot-green"></span>Active</span></td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteTeacher('${t.id}')">Remove</button></td>
+      </tr>`).join('');
+}
+
+async function loadStudents() {
+  const snap = await getDocs(collection(db, 'students'));
+  studentsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  document.getElementById('stat-students').textContent = studentsList.length;
+}
+
+let selectedClass = '', selectedSection = '';
+
+window.selectClass = function(btn, cls) {
+  document.querySelectorAll('.class-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedClass = cls;
+  selectedSection = '';
+  document.getElementById('section-row').style.display = 'block';
+  document.getElementById('students-card').style.display = 'none';
+  // reset section btns
+  document.querySelectorAll('#section-row .class-btn').forEach(b => b.classList.remove('active'));
+};
+
+window.selectSection = function(btn, sec) {
+  document.querySelectorAll('#section-row .class-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedSection = sec;
+  showStudents();
+};
+
+function showStudents() {
+  const filtered = studentsList.filter(s => s.class === selectedClass && s.section === selectedSection);
+  document.getElementById('students-card-title').textContent = `${selectedClass} — Section ${selectedSection} (${filtered.length} students)`;
+  document.getElementById('students-card').style.display = 'block';
+  const tbody = document.getElementById('students-tbody');
+  tbody.innerHTML = filtered.length === 0
+    ? '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:28px;">No students in this class/section</td></tr>'
+    : filtered.map(s => `
+      <tr>
+        <td style="color:var(--muted);font-family:'Syne',sans-serif;font-size:12px;">${s.rollNo||'—'}</td>
+        <td>${s.name||'—'}</td>
+        <td><span class="badge badge-purple">${s.class||'—'}</span></td>
+        <td>${s.section||'—'}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteStudent('${s.id}')">Remove</button></td>
+      </tr>`).join('');
+}
+
+async function loadAssignments() {
+  const snap = await getDocs(collection(db, 'assignments'));
+  const assignments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  document.getElementById('stat-classes').textContent = [...new Set(assignments.map(a=>a.class))].length;
+  document.getElementById('stat-assignments').textContent = assignments.length;
+
+  const list = document.getElementById('assignments-list');
+  list.innerHTML = assignments.length === 0
+    ? '<div style="color:var(--muted);font-size:13px;">No assignments yet</div>'
+    : assignments.map(a => `
+      <div style="background:var(--surface2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:13px;font-weight:500;">${a.teacherName||'—'}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${a.class} ${a.section} &middot; ${a.subject}</div>
+        </div>
+        <button class="btn btn-sm btn-danger" onclick="deleteAssignment('${a.id}')">&#x2715;</button>
+      </div>`).join('');
+}
+
+window.addTeacher = async function() {
+  const name  = document.getElementById('t-name').value.trim();
+  const email = document.getElementById('t-email').value.trim();
+  const pass  = document.getElementById('t-pass').value;
+  if (!name || !email || !pass) return toast('Fill all fields', 'error');
+  try {
+    const sec = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+    const cred = await sec.createUserWithEmailAndPassword(auth, email, pass);
+    await setDoc(doc(db, 'users', cred.user.uid), {
+      name, email, role: 'teacher', assignments: [], createdAt: serverTimestamp()
+    });
+    closeModal('modal-teacher');
+    toast('Teacher account created');
+    await loadTeachers();
+  } catch(e) {
+    toast(e.message || 'Error creating teacher', 'error');
+  }
+};
+
+window.addStudent = async function() {
+  const name    = document.getElementById('s-name').value.trim();
+  const email   = document.getElementById('s-email').value.trim();
+  const pass    = document.getElementById('s-pass').value;
+  const rollNo  = document.getElementById('s-roll').value.trim();
+  const cls     = document.getElementById('s-class').value;
+  const section = document.getElementById('s-section').value;
+  if (!name || !email || !pass || !rollNo) return toast('Fill all fields', 'error');
+  try {
+    const sec = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+    const cred = await sec.createUserWithEmailAndPassword(auth, email, pass);
+    await setDoc(doc(db, 'students', cred.user.uid), {
+      name, email, rollNo, class: cls, section, role: 'student', createdAt: serverTimestamp()
+    });
+    await setDoc(doc(db, 'users', cred.user.uid), {
+      name, email, role: 'student', class: cls, section, createdAt: serverTimestamp()
+    });
+    closeModal('modal-student');
+    toast('Student account created');
+    await loadStudents();
+  } catch(e) {
+    toast(e.message || 'Error adding student', 'error');
+  }
+};
+
+window.saveAssignment = async function() {
+  const tid     = document.getElementById('assign-teacher').value;
+  const cls     = document.getElementById('assign-class').value;
+  const section = document.getElementById('assign-section').value;
+  const subject = document.getElementById('assign-subject').value;
+  if (!tid || !cls || !subject) return toast('Fill all fields', 'error');
+  const teacher = teachersList.find(t => t.id === tid);
+  try {
+    await addDoc(collection(db, 'assignments'), {
+      teacherId: tid, teacherName: teacher?.name || '',
+      class: cls, section, subject, createdAt: serverTimestamp()
+    });
+    toast('Assignment saved');
+    await loadAssignments();
+  } catch(e) {
+    toast('Error saving', 'error');
+  }
+};
+
+window.deleteTeacher    = async (id) => { const {deleteDoc} = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"); await deleteDoc(doc(db,'users',id)); toast('Teacher removed'); loadTeachers(); };
+window.deleteStudent    = async (id) => { const {deleteDoc} = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"); await deleteDoc(doc(db,'students',id)); toast('Student removed'); loadStudents(); };
+window.deleteAssignment = async (id) => { const {deleteDoc} = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"); await deleteDoc(doc(db,'assignments',id)); toast('Assignment removed'); loadAssignments(); };
+
+init();
+</script>
+</body>
+</html>

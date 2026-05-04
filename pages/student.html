@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>My Progress — StudentTrack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:       #0a0a0f;
+    --surface:  #13131a;
+    --surface2: #1c1c28;
+    --surface3: #22222f;
+    --border:   rgba(255,255,255,0.07);
+    --border2:  rgba(255,255,255,0.14);
+    --accent:   #7c6af7;
+    --accent2:  #a594ff;
+    --teal:     #2dd4bf;
+    --amber:    #fbbf24;
+    --green:    #4ade80;
+    --text:     #f0f0f8;
+    --muted:    #8888aa;
+    --danger:   #f87171;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(45,212,191,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(45,212,191,0.02) 1px, transparent 1px);
+    background-size: 48px 48px; pointer-events: none; z-index: 0;
+  }
+
+  /* NAVBAR */
+  .navbar {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,10,15,0.9); backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px; height: 60px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav-brand { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+  .nav-brand span { color: var(--accent2); }
+  .nav-right { display: flex; align-items: center; gap: 12px; }
+  .nav-name { font-size: 13px; color: var(--muted); }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--teal));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; font-family: 'Syne', sans-serif;
+  }
+  .sign-out {
+    padding: 6px 14px; border: 1px solid var(--border2); border-radius: 8px;
+    background: transparent; color: var(--muted);
+    font-family: 'DM Sans', sans-serif; font-size: 12px; cursor: pointer; transition: all 0.2s;
+  }
+  .sign-out:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* PAGE */
+  .page-wrap {
+    position: relative; z-index: 1;
+    max-width: 1060px; margin: 0 auto; padding: 36px 24px;
+    animation: fadeIn 0.5s ease both;
+  }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+
+  .page-header { margin-bottom: 28px; }
+  .page-title { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+  .page-title span { color: var(--accent2); }
+  .page-sub { font-size: 13px; color: var(--muted); margin-top: 5px; }
+
+  /* REPORT HERO */
+  .report-hero {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 26px 30px;
+    position: relative; overflow: hidden; margin-bottom: 24px;
+  }
+  .report-hero::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--teal), var(--amber));
+  }
+  .hero-top {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; flex-wrap: wrap; gap: 20px;
+  }
+  .hero-left { display: flex; align-items: center; gap: 18px; }
+  .hero-av {
+    width: 60px; height: 60px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--teal));
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800;
+    box-shadow: 0 0 0 4px rgba(124,106,247,0.15); flex-shrink: 0;
+  }
+  .hero-name { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .meta-pill {
+    font-size: 12px; color: var(--muted);
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 3px 10px;
+  }
+  .meta-pill strong { color: var(--text); font-weight: 500; }
+
+  /* Result badge */
+  .result-badge {
+    display: inline-flex; flex-direction: column; align-items: center;
+    padding: 12px 22px; border-radius: 14px; border: 2px solid;
+    min-width: 110px; text-align: center;
+  }
+  .result-badge.pass    { background: rgba(74,222,128,0.08);  border-color: rgba(74,222,128,0.3); }
+  .result-badge.fail    { background: rgba(248,113,113,0.08); border-color: rgba(248,113,113,0.3); }
+  .result-badge.pending { background: rgba(251,191,36,0.06);  border-color: rgba(251,191,36,0.2); }
+  .rb-label  { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 4px; }
+  .rb-status { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; }
+  .result-badge.pass    .rb-status { color: var(--green); }
+  .result-badge.fail    .rb-status { color: var(--danger); }
+  .result-badge.pending .rb-status { color: var(--amber); }
+  .rb-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  /* Stats strip */
+  .stats-strip {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(110px,1fr));
+    gap: 1px; margin-top: 22px;
+    background: var(--border); border-radius: 12px; overflow: hidden; border: 1px solid var(--border);
+  }
+  .ss-item { background: var(--surface2); padding: 13px 14px; text-align: center; }
+  .ss-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .ss-val { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+
+  /* TABS */
+  .tabs {
+    display: flex; gap: 6px; margin-bottom: 20px;
+    background: var(--surface2); border-radius: 12px; padding: 4px; width: fit-content;
+  }
+  .tab-btn {
+    padding: 8px 20px; border: none; border-radius: 9px;
+    background: transparent; color: var(--muted);
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  }
+  .tab-btn.active { background: var(--accent); color: #fff; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* SUBJECTS GRID */
+  .subjects-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px;
+  }
+  .subject-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+    animation: cardIn 0.4s cubic-bezier(.16,1,.3,1) both;
+  }
+  .subject-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  @keyframes cardIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+  .sc-header {
+    display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 10px;
+  }
+  .sc-left { display: flex; align-items: center; gap: 10px; }
+  .sc-icon {
+    width: 34px; height: 34px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+  }
+  .sc-name { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; }
+  .sc-teacher { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  /* Mark chips */
+  .sc-chips { display: flex; gap: 8px; padding: 0 18px 12px; flex-wrap: wrap; }
+  .mark-chip {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 7px 12px; min-width: 76px; text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .mark-chip::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+  .mark-chip.mid::before    { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .mark-chip.final::before  { background: linear-gradient(90deg, var(--teal), #22d3ee); }
+  .mark-chip.total::before  { background: linear-gradient(90deg, var(--amber), #f59e0b); }
+  .mc-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 3px; }
+  .mc-val { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+  .mc-out { font-size: 10px; color: var(--muted); }
+
+  /* Progress bar */
+  .sc-progress { padding: 0 18px 12px; }
+  .prog-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 5px; }
+  .prog-bar { height: 5px; background: var(--surface3); border-radius: 99px; overflow: hidden; }
+  .prog-fill { height: 100%; border-radius: 99px; transition: width 0.8s cubic-bezier(.16,1,.3,1); }
+
+  /* Footer */
+  .sc-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 18px 14px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 8px;
+  }
+  .trend-chip { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+
+  /* Grade badge */
+  .grade-badge {
+    display: inline-flex; align-items: center;
+    padding: 3px 11px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; font-family: 'Syne', sans-serif;
+  }
+  .g-Ap { background:rgba(74,222,128,0.12);  color:var(--green);  border:1px solid rgba(74,222,128,0.25); }
+  .g-A  { background:rgba(74,222,128,0.10);  color:var(--green);  border:1px solid rgba(74,222,128,0.2); }
+  .g-B  { background:rgba(45,212,191,0.10);  color:var(--teal);   border:1px solid rgba(45,212,191,0.2); }
+  .g-C  { background:rgba(251,191,36,0.10);  color:var(--amber);  border:1px solid rgba(251,191,36,0.2); }
+  .g-D  { background:rgba(251,191,36,0.08);  color:var(--amber);  border:1px solid rgba(251,191,36,0.15); }
+  .g-E  { background:rgba(248,113,113,0.08); color:var(--danger); border:1px solid rgba(248,113,113,0.2); }
+  .g-F  { background:rgba(248,113,113,0.15); color:var(--danger); border:1px solid rgba(248,113,113,0.3); }
+  .g-NA { background:var(--surface2); color:var(--muted); border:1px solid var(--border); }
+
+  /* Copy chips */
+  .copy-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; padding: 3px 9px; border-radius: 20px; border: 1px solid;
+  }
+  .copy-checked { background:rgba(45,212,191,0.1);  color:var(--teal);   border-color:rgba(45,212,191,0.2); }
+  .copy-pending { background:rgba(251,191,36,0.08); color:var(--amber);  border-color:rgba(251,191,36,0.2); }
+  .copy-missing { background:rgba(248,113,113,0.08);color:var(--danger); border-color:rgba(248,113,113,0.2); }
+
+  /* EXAMS TAB */
+  .exam-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 600px) { .exam-two-col { grid-template-columns: 1fr; } }
+
+  .exam-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .exam-card-header {
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .exam-dot { width: 9px; height: 9px; border-radius: 50%; }
+  .exam-dot.mid   { background: var(--accent); }
+  .exam-dot.final { background: var(--teal); }
+  .exam-card-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; }
+
+  .exam-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px; border-bottom: 1px solid var(--border); transition: background 0.15s;
+  }
+  .exam-row:last-child { border-bottom: none; }
+  .exam-row:hover { background: rgba(255,255,255,0.02); }
+  .er-subj { font-size: 13px; font-weight: 500; }
+  .er-teacher { font-size: 11px; color: var(--muted); }
+  .er-right { text-align: right; }
+  .er-marks { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+  .er-pct { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .er-bar { height: 3px; background: var(--surface3); border-radius: 99px; overflow: hidden; width: 80px; margin: 5px 0 0 auto; }
+  .er-fill { height: 100%; border-radius: 99px; transition: width 0.8s cubic-bezier(.16,1,.3,1); }
+  .er-fill.mid   { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .er-fill.final { background: linear-gradient(90deg, var(--teal), #22d3ee); }
+  .exam-empty { padding: 32px 20px; text-align: center; color: var(--muted); font-size: 13px; }
+
+  /* COPY TAB */
+  .copy-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .copy-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .copy-table th {
+    padding: 11px 18px; font-size: 10px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.6px;
+    border-bottom: 1px solid var(--border); text-align: left;
+  }
+  .copy-table td { padding: 13px 18px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .copy-table tr:last-child td { border-bottom: none; }
+  .copy-table tr:hover td { background: rgba(255,255,255,0.015); }
+
+  /* LOADING */
+  .loading-wrap { text-align: center; padding: 60px 24px; color: var(--muted); }
+  .loader {
+    width: 34px; height: 34px; border: 3px solid var(--border2);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-brand">Student<span>Track</span></div>
+  <div class="nav-right">
+    <div class="avatar" id="av">ST</div>
+    <span class="nav-name" id="nav-name">Student</span>
+    <button class="sign-out" onclick="handleSignOut()">Sign out</button>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <div class="loading-wrap" id="loading-wrap">
+    <div class="loader"></div>
+    Loading your report card…
+  </div>
+
+  <div id="main-content" style="display:none;">
+
+    <div class="page-header">
+      <div class="page-title">My <span>Progress</span></div>
+      <div class="page-sub" id="page-sub">—</div>
+    </div>
+
+    <!-- Hero -->
+    <div class="report-hero">
+      <div class="hero-top">
+        <div class="hero-left">
+          <div class="hero-av" id="hero-av">S</div>
+          <div>
+            <div class="hero-name" id="hero-name">—</div>
+            <div class="hero-meta" id="hero-meta"></div>
+          </div>
+        </div>
+        <div id="result-badge-wrap"></div>
+      </div>
+      <div class="stats-strip" id="stats-strip"></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab(this,'tab-subjects')">All Subjects</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-exams')">Exams</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-copy')">Copy Status</button>
+    </div>
+
+    <div id="tab-subjects" class="tab-pane active">
+      <div class="subjects-grid" id="subjects-grid"></div>
+    </div>
+
+    <div id="tab-exams" class="tab-pane">
+      <div class="exam-two-col">
+        <div class="exam-card">
+          <div class="exam-card-header">
+            <div class="exam-dot mid"></div>
+            <div class="exam-card-title">Mid Term</div>
+          </div>
+          <div id="mid-rows"><div class="exam-empty">No mid term marks yet</div></div>
+        </div>
+        <div class="exam-card">
+          <div class="exam-card-header">
+            <div class="exam-dot final"></div>
+            <div class="exam-card-title">Final Term</div>
+          </div>
+          <div id="final-rows"><div class="exam-empty">No final term marks yet</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-copy" class="tab-pane">
+      <div class="copy-table-wrap">
+        <table class="copy-table">
+          <thead>
+            <tr>
+              <th>Subject</th>
+              <th>Copy Status</th>
+              <th>Teacher</th>
+              <th>Remarks</th>
+            </tr>
+          </thead>
+          <tbody id="copy-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script type="module">
+import { auth, db } from '../js/firebase-config.js';
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  doc, getDoc, getDocs, collection, query, where
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+window.handleSignOut = async () => { await signOut(auth); window.location.href = '../index.html'; };
+
+window.switchTab = function(btn, pane) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(pane).classList.add('active');
+};
+
+/* ── HELPERS ─────────────────────────────── */
+function getGrade(pct) {
+  if (pct >= 90) return 'A+';
+  if (pct >= 80) return 'A';
+  if (pct >= 70) return 'B';
+  if (pct >= 60) return 'C';
+  if (pct >= 50) return 'D';
+  if (pct >= 33) return 'E';
+  return 'F';
+}
+function gradeCls(g) {
+  const map = {'A+':'g-Ap','A':'g-A','B':'g-B','C':'g-C','D':'g-D','E':'g-E','F':'g-F'};
+  return map[g] || 'g-NA';
+}
+function pctColor(pct) {
+  if (pct == null) return 'var(--muted)';
+  if (pct >= 70) return 'var(--green)';
+  if (pct >= 50) return 'var(--amber)';
+  return 'var(--danger)';
+}
+function progGrad(pct) {
+  if (pct >= 70) return 'linear-gradient(90deg,#4ade80,#22c55e)';
+  if (pct >= 50) return 'linear-gradient(90deg,#fbbf24,#f59e0b)';
+  return 'linear-gradient(90deg,#f87171,#ef4444)';
+}
+function trendIcon(t) {
+  if (t === 'improving') return '📈';
+  if (t === 'declining')  return '📉';
+  return '➡️';
+}
+const SUBJ_META = {
+  'Computer Science':{ icon:'💻', color:'#7c6af7' },
+  'Mathematics':     { icon:'📐', color:'#2dd4bf' },
+  'English':         { icon:'📖', color:'#fbbf24' },
+  'Physics':         { icon:'⚛️',  color:'#60a5fa' },
+  'Chemistry':       { icon:'🧪', color:'#a78bfa' },
+  'Biology':         { icon:'🌿', color:'#4ade80' },
+  'Urdu':            { icon:'✍️',  color:'#f472b6' },
+  'Islamiat':        { icon:'☪️',  color:'#34d399' },
+};
+function subjMeta(n) { return SUBJ_META[n] || { icon:'📚', color:'#8888aa' }; }
+
+/* ── AUTH ────────────────────────────────── */
+onAuthStateChanged(auth, async user => {
+  if (!user) { window.location.href = '../index.html'; return; }
+
+  // Load student profile
+  let snap = await getDoc(doc(db, 'students', user.uid));
+  if (!snap.exists()) snap = await getDoc(doc(db, 'users', user.uid));
+  if (!snap.exists() || snap.data().role !== 'student') {
+    window.location.href = '../index.html'; return;
+  }
+
+  const student = { id: user.uid, ...snap.data() };
+  const init = (student.name || 'ST').substring(0,2).toUpperCase();
+
+  document.getElementById('av').textContent        = init;
+  document.getElementById('nav-name').textContent  = student.name || 'Student';
+  document.getElementById('hero-av').textContent   = init;
+  document.getElementById('hero-name').textContent = student.name || '—';
+  document.getElementById('page-sub').textContent  =
+    `Class ${student.class||'—'} — Section ${student.section||'—'} · Roll No: ${student.rollNo||'—'}`;
+  document.getElementById('hero-meta').innerHTML = `
+    <span class="meta-pill">🎓 Class <strong>${student.class||'—'}</strong></span>
+    <span class="meta-pill">📋 Roll No <strong>${student.rollNo||'—'}</strong></span>
+    <span class="meta-pill">🏫 Section <strong>${student.section||'—'}</strong></span>
+  `;
+
+  await loadData(student);
+});
+
+/* ── LOAD DATA ───────────────────────────── */
+async function loadData(student) {
+
+  // 1. Get assignments for this student's class + section
+  const aSnap = await getDocs(query(
+    collection(db, 'assignments'),
+    where('class',   '==', student.class),
+    where('section', '==', student.section)
+  ));
+  const assignments = aSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // 2. For each assignment, fetch result from:
+  //    results/{assignmentId}/students/{studentId}
+  const subjects = [];
+  await Promise.all(assignments.map(async a => {
+    try {
+      const rSnap = await getDoc(doc(db, 'results', a.id, 'students', student.id));
+      const r = rSnap.exists() ? rSnap.data() : {};
+      subjects.push({
+        subject:      a.subject,
+        teacherName:  a.teacherName || '—',
+        assignId:     a.id,
+        // exams — from Firestore: exams.midterm, exams.final
+        midTerm:      r.exams?.midterm,
+        finalTerm:    r.exams?.final,
+        midTermOut:   r.midtermTotal  || 100,
+        finalTermOut: r.finalTotal    || 100,
+        // copy status
+        copyStatus:   r.copyStatus    || 'pending',
+        note:         r.note          || '',
+        trend:        r.trend         || 'stable',
+        // raw marks (tests)
+        marks:        r.marks         || {},
+        totalMarks:   r.totalMarks    || 20,
+      });
+    } catch(e) {
+      console.error('Error loading result for', a.subject, e);
+      subjects.push({
+        subject: a.subject, teacherName: a.teacherName || '—',
+        assignId: a.id, copyStatus: 'pending', trend: 'stable', marks: {},
+      });
+    }
+  }));
+
+  // 3. Overall stats
+  // Logic: agar final aa gaya to final use karo, warna mid use karo
+  const withMid   = subjects.filter(s => s.midTerm   !== undefined);
+  const withFinal = subjects.filter(s => s.finalTerm !== undefined);
+  const complete  = subjects.filter(s => s.midTerm !== undefined && s.finalTerm !== undefined);
+
+  // Overall calculation: har subject ke liye latest available data use karo
+  // Final available → final use karo; sirf mid hai → mid use karo
+  let grandObt = 0, grandTot = 0;
+  subjects.forEach(s => {
+    const hasMid   = s.midTerm   !== undefined;
+    const hasFinal = s.finalTerm !== undefined;
+    if (hasFinal) {
+      // Final term available — use only final
+      grandObt += s.finalTerm;
+      grandTot += (s.finalTermOut || 100);
+    } else if (hasMid) {
+      // Only mid term — use mid
+      grandObt += s.midTerm;
+      grandTot += (s.midTermOut || 100);
+    }
+  });
+  const overallPct   = grandTot > 0 ? Math.round((grandObt/grandTot)*100) : null;
+  const overallGrade = overallPct !== null ? getGrade(overallPct) : '—';
+  const isPassing    = overallPct !== null ? overallPct >= 33 : null;
+
+  // 4. Rank
+  let rankStr = '—';
+  try {
+    const cs = await getDocs(query(collection(db,'students'),
+      where('class','==',student.class), where('section','==',student.section)));
+    rankStr = `—/${cs.size}`;
+  } catch(e) {}
+
+  // 5. Trend (mid avg vs final avg)
+  const avgM = withMid.length
+    ? Math.round(withMid.reduce((a,s)=>a+Math.round((s.midTerm/(s.midTermOut||100))*100),0)/withMid.length)
+    : null;
+  const avgF = withFinal.length
+    ? Math.round(withFinal.reduce((a,s)=>a+Math.round((s.finalTerm/(s.finalTermOut||100))*100),0)/withFinal.length)
+    : null;
+  let trendOverall = 'stable';
+  if (avgM!==null && avgF!==null) {
+    if (avgF > avgM+3) trendOverall = 'improving';
+    else if (avgF < avgM-3) trendOverall = 'declining';
+  }
+  const trendLabel = trendOverall==='improving'?'📈 Up':trendOverall==='declining'?'📉 Down':'➡️ Stable';
+
+  /* ── RENDER ──────────────────────────────── */
+
+  // Result badge
+  document.getElementById('result-badge-wrap').innerHTML = overallPct !== null ? `
+    <div class="result-badge ${isPassing?'pass':'fail'}">
+      <div class="rb-label">Overall Result</div>
+      <div class="rb-status">${isPassing?'PASS':'FAIL'}</div>
+      <div class="rb-sub">${overallGrade} · ${overallPct}%</div>
+    </div>` : `
+    <div class="result-badge pending">
+      <div class="rb-label">Overall Result</div>
+      <div class="rb-status">PENDING</div>
+      <div class="rb-sub">Awaiting marks</div>
+    </div>`;
+
+  // Stats strip
+  document.getElementById('stats-strip').innerHTML = `
+    <div class="ss-item">
+      <div class="ss-label">Subjects</div>
+      <div class="ss-val" style="color:var(--accent2)">${subjects.length}</div>
+    </div>
+    <div class="ss-item">
+      <div class="ss-label">Overall Avg</div>
+      <div class="ss-val" style="color:${pctColor(overallPct)}">${overallPct!==null?overallPct+'%':'—'}</div>
+    </div>
+    <div class="ss-item">
+      <div class="ss-label">Grade</div>
+      <div class="ss-val" style="color:${pctColor(overallPct)}">${overallGrade}</div>
+    </div>
+    <div class="ss-item">
+      <div class="ss-label">Total Marks</div>
+      <div class="ss-val" style="color:var(--teal)">${grandObt}<span style="font-size:12px;color:var(--muted)">/${grandTot}</span></div>
+    </div>
+    <div class="ss-item">
+      <div class="ss-label">Trend</div>
+      <div class="ss-val" style="font-size:15px">${trendLabel}</div>
+    </div>
+    <div class="ss-item">
+      <div class="ss-label">Class Rank</div>
+      <div class="ss-val" style="color:var(--amber)">${rankStr}</div>
+    </div>
+  `;
+
+  /* TAB 1 — All Subjects */
+  const grid = document.getElementById('subjects-grid');
+  if (!subjects.length) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px;">No subjects assigned yet.</div>';
+  } else {
+    grid.innerHTML = subjects.map((s, i) => {
+      const meta     = subjMeta(s.subject);
+      const hasMid   = s.midTerm   !== undefined;
+      const hasFinal = s.finalTerm !== undefined;
+      const hasBoth  = hasMid && hasFinal;
+      const midOut   = s.midTermOut   || 100;
+      const finOut   = s.finalTermOut || 100;
+      const midPct   = hasMid   ? Math.round((s.midTerm/midOut)*100)   : null;
+      const finPct   = hasFinal ? Math.round((s.finalTerm/finOut)*100) : null;
+
+      // KEY LOGIC:
+      // - Final aa gaya → final ka result dikhao (mid chhoro)
+      // - Sirf mid hai  → mid ka result dikhao
+      // - Dono hain     → combined total dikhao
+      const displayPct = hasFinal ? finPct : midPct;
+      const displayVal = hasFinal ? s.finalTerm : (hasMid ? s.midTerm : null);
+      const displayOut = hasFinal ? finOut : midOut;
+      const displayLbl = hasBoth  ? 'Combined' : hasFinal ? 'Final Term' : 'Mid Term';
+      const chipType   = hasFinal ? 'final' : 'mid';
+
+      // Combined total percentage (when both exist)
+      const combinedPct = hasBoth
+        ? Math.round(((s.midTerm + s.finalTerm) / (midOut + finOut)) * 100)
+        : null;
+
+      const activePct = combinedPct ?? displayPct;
+      const grd = activePct !== null ? getGrade(activePct) : 'NA';
+
+      const cs = s.copyStatus || 'pending';
+      const copyClass = cs==='checked'?'copy-checked':cs==='not_submitted'?'copy-missing':'copy-pending';
+      const copyLabel = cs==='checked'?'✓ Checked':cs==='not_submitted'?'✗ Not Submitted':'⏳ Pending';
+
+      return `
+        <div class="subject-card" style="animation-delay:${i*0.06}s">
+          <div class="sc-header">
+            <div class="sc-left">
+              <div class="sc-icon" style="background:${meta.color}22">${meta.icon}</div>
+              <div>
+                <div class="sc-name">${s.subject}</div>
+                <div class="sc-teacher">${s.teacherName}</div>
+              </div>
+            </div>
+            <span class="grade-badge ${gradeCls(grd)}">${grd}</span>
+          </div>
+
+          <div class="sc-chips">
+            ${hasBoth ? `
+              <!-- Dono hain: mid + final + combined total dikhao -->
+              <div class="mark-chip mid">
+                <div class="mc-label">Mid Term</div>
+                <div class="mc-val" style="color:${pctColor(midPct)}">${s.midTerm}</div>
+                <div class="mc-out">/ ${midOut}</div>
+              </div>
+              <div class="mark-chip final">
+                <div class="mc-label">Final Term</div>
+                <div class="mc-val" style="color:${pctColor(finPct)}">${s.finalTerm}</div>
+                <div class="mc-out">/ ${finOut}</div>
+              </div>
+              <div class="mark-chip total">
+                <div class="mc-label">Total</div>
+                <div class="mc-val" style="color:${pctColor(combinedPct)}">${s.midTerm + s.finalTerm}</div>
+                <div class="mc-out">/ ${midOut + finOut}</div>
+              </div>
+            ` : displayVal !== null ? `
+              <!-- Sirf ek hai: wahi dikhao bada -->
+              <div class="mark-chip ${chipType}" style="min-width:120px">
+                <div class="mc-label">${displayLbl}</div>
+                <div class="mc-val" style="color:${pctColor(displayPct)};font-size:20px">${displayVal}</div>
+                <div class="mc-out">/ ${displayOut} &nbsp;·&nbsp; ${displayPct}%</div>
+              </div>
+            ` : `
+              <div style="padding:8px 0;font-size:12px;color:var(--muted)">No marks entered yet</div>
+            `}
+          </div>
+
+          ${activePct !== null ? `
+          <div class="sc-progress">
+            <div class="prog-label">
+              <span>${hasBoth ? 'Combined' : displayLbl}</span>
+              <span style="color:${pctColor(activePct)};font-weight:600">${activePct}%</span>
+            </div>
+            <div class="prog-bar">
+              <div class="prog-fill" style="width:${activePct}%;background:${progGrad(activePct)}"></div>
+            </div>
+          </div>` : ''}
+
+          <div class="sc-footer">
+            <span class="copy-chip ${copyClass}">${copyLabel}</span>
+            <span class="trend-chip">${trendIcon(s.trend||'stable')} ${s.trend||'stable'}</span>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  /* TAB 2 — Exams */
+  const renderExamRows = (list, type) => !list.length
+    ? `<div class="exam-empty">No ${type==='mid'?'mid term':'final term'} marks entered yet</div>`
+    : list.map(s => {
+        const out = type==='mid' ? (s.midTermOut||100) : (s.finalTermOut||100);
+        const val = type==='mid' ? s.midTerm : s.finalTerm;
+        const pct = Math.round((val/out)*100);
+        return `
+          <div class="exam-row">
+            <div>
+              <div class="er-subj">${s.subject}</div>
+              <div class="er-teacher">${s.teacherName}</div>
+            </div>
+            <div class="er-right">
+              <div class="er-marks" style="color:${pctColor(pct)}">${val}
+                <span style="font-size:13px;color:var(--muted);font-weight:400">/${out}</span>
+              </div>
+              <div class="er-pct">${pct}% &nbsp;
+                <span class="grade-badge ${gradeCls(getGrade(pct))}" style="font-size:10px">${getGrade(pct)}</span>
+              </div>
+              <div class="er-bar"><div class="er-fill ${type}" style="width:${pct}%"></div></div>
+            </div>
+          </div>`;
+      }).join('');
+
+  document.getElementById('mid-rows').innerHTML   = renderExamRows(withMid,   'mid');
+  document.getElementById('final-rows').innerHTML = renderExamRows(withFinal, 'final');
+
+  /* TAB 3 — Copy Status */
+  document.getElementById('copy-tbody').innerHTML = !subjects.length
+    ? '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px;">No subjects yet</td></tr>'
+    : subjects.map(s => {
+        const cs = s.copyStatus || 'pending';
+        const copyClass = cs==='checked'?'copy-checked':cs==='not_submitted'?'copy-missing':'copy-pending';
+        const copyLabel = cs==='checked'?'✓ Checked':cs==='not_submitted'?'✗ Not Submitted':'⏳ Pending';
+        return `
+          <tr>
+            <td style="font-weight:500">${s.subject}</td>
+            <td><span class="copy-chip ${copyClass}">${copyLabel}</span></td>
+            <td style="color:var(--muted)">${s.teacherName}</td>
+            <td style="color:var(--muted);font-size:12px;font-style:italic">${s.note||'—'}</td>
+          </tr>`;
+      }).join('');
+
+  /* Show */
+  document.getElementById('loading-wrap').style.display = 'none';
+  document.getElementById('main-content').style.display = 'block';
+}
+</script>
+</body>
+</html>

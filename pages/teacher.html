@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Teacher — StudentTrack</title>
+<link rel="stylesheet" href="../css/app.css"/>
+<style>
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(45,212,191,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(45,212,191,0.02) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+  .empty-state { text-align: center; padding: 48px 24px; color: var(--muted); font-size: 14px; }
+  .empty-state svg { margin: 0 auto 12px; display: block; opacity: 0.3; }
+  .mark-row td { vertical-align: middle; }
+  .trend-select {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 12px;
+    padding: 5px 8px; outline: none; width: 130px;
+  }
+  .trend-select:focus { border-color: var(--accent); }
+  .note-input {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 12px;
+    padding: 6px 10px; outline: none; width: 100%; transition: border-color 0.2s;
+  }
+  .note-input:focus { border-color: var(--accent); }
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    z-index: 200; align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 18px; padding: 28px; width: 100%; max-width: 400px;
+    animation: slideUp 0.3s cubic-bezier(.16,1,.3,1) both;
+  }
+  @keyframes slideUp {
+    from { opacity:0; transform: translateY(30px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+  .modal-title { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; margin-bottom: 20px; }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-brand">Student<span>Track</span></div>
+  <div class="nav-right">
+    <select class="nav-select" id="class-dropdown" onchange="loadClass(this.value)">
+      <option value="">Select class</option>
+    </select>
+    <div class="avatar av-teal" id="av-initials">TC</div>
+    <span class="nav-name" id="teacher-name">Teacher</span>
+    <button class="sign-out" onclick="handleSignOut()">Sign out</button>
+  </div>
+</nav>
+
+<div class="page-wrap fade-in">
+  <div class="page-header">
+    <div class="page-title" id="class-title">Select a <span>class</span></div>
+    <div class="page-sub" id="class-sub">Choose a class from the dropdown above to get started</div>
+  </div>
+
+  <div id="stats-row" style="display:none;">
+    <div class="stat-grid">
+      <div class="stat-card teal">  <div class="stat-label">Students</div>       <div class="stat-val" id="st-count">—</div></div>
+      <div class="stat-card green"> <div class="stat-label">Marks entered</div>  <div class="stat-val" id="st-marks">—</div></div>
+      <div class="stat-card purple"><div class="stat-label">Copies checked</div> <div class="stat-val" id="st-copies">—</div></div>
+      <div class="stat-card amber"> <div class="stat-label">Class avg</div>      <div class="stat-val" id="st-avg">—</div></div>
+    </div>
+  </div>
+
+  <div id="main-content" style="display:none;">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab(this,'tab-marks')">Test marks</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-copy')">Copy status</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-progress')">Progress</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-exams')">Exams</button>
+    </div>
+
+    <!-- MARKS TAB -->
+    <div id="tab-marks" class="tab-pane active">
+      <div class="card">
+        <div class="card-header">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div class="card-title">Test marks</div>
+            <select class="nav-select" id="test-select" style="font-size:12px;padding:5px 10px;" onchange="renderMarks()">
+              <option value="">Select test</option>
+            </select>
+            <button class="btn btn-teal btn-sm" onclick="openAddTest()">+ Add test</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:12px;color:var(--muted);">Total marks:</span>
+            <input type="number" class="form-input inp-sm" id="total-marks" value="20" min="1" max="200"/>
+            <button class="btn btn-primary btn-sm" onclick="saveAllMarks()">Save all</button>
+          </div>
+        </div>
+        <div id="no-test-msg" style="text-align:center;padding:32px;color:var(--muted);font-size:13px;">
+          No tests added yet — click <strong>"+ Add test"</strong> to create one
+        </div>
+        <table class="data-table" id="marks-table" style="display:none;">
+          <thead><tr><th>Roll no</th><th>Student</th><th>Marks</th><th>Out of</th><th>%</th><th>Status</th></tr></thead>
+          <tbody id="marks-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- COPY STATUS TAB -->
+    <div id="tab-copy" class="tab-pane">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Copy checking status</div>
+          <button class="btn btn-primary btn-sm" onclick="saveAllCopy()">Save all</button>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Roll no</th><th>Student</th><th>Current status</th><th>Update</th></tr></thead>
+          <tbody id="copy-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PROGRESS TAB -->
+    <div id="tab-progress" class="tab-pane">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Student progress</div>
+          <button class="btn btn-primary btn-sm" onclick="saveAllProgress()">Save all</button>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Roll no</th><th>Student</th><th>Trend</th><th>Note</th></tr></thead>
+          <tbody id="progress-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- EXAMS TAB -->
+    <div id="tab-exams" class="tab-pane">
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="card-title">Mid-term exam</div>
+            <span class="badge badge-purple">Separate from tests</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:12px;color:var(--muted);">Total marks:</span>
+            <input type="number" class="form-input inp-sm" id="midterm-total" value="100" min="1" max="200"/>
+            <button class="btn btn-primary btn-sm" onclick="saveExam('midterm')">Save all</button>
+          </div>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Roll no</th><th>Student</th><th>Marks</th><th>Out of</th><th>%</th><th>Grade</th><th>Status</th></tr></thead>
+          <tbody id="midterm-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="card-title">Final exam</div>
+            <span class="badge badge-amber">Separate from tests</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:12px;color:var(--muted);">Total marks:</span>
+            <input type="number" class="form-input inp-sm" id="final-total" value="100" min="1" max="200"/>
+            <button class="btn btn-primary btn-sm" onclick="saveExam('final')">Save all</button>
+          </div>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Roll no</th><th>Student</th><th>Marks</th><th>Out of</th><th>%</th><th>Grade</th><th>Status</th></tr></thead>
+          <tbody id="final-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="empty-state" class="empty-state">
+    <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+      <circle cx="24" cy="24" r="20"/><path d="M24 14v10l6 4"/>
+    </svg>
+    <div>Choose a class from the dropdown to begin</div>
+  </div>
+</div>
+
+<!-- ADD TEST MODAL -->
+<div class="modal-overlay" id="modal-add-test">
+  <div class="modal">
+    <div class="modal-title">Add new test</div>
+    <div class="form-group">
+      <label class="form-label">Test name</label>
+      <input class="form-input" id="new-test-name" placeholder="e.g. Monthly Test 1, Chapter 3 Test"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Total marks</label>
+      <input class="form-input" id="new-test-total" type="number" value="20" min="1" max="200"/>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeAddTest()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewTest()">Add test</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { auth, db } from '../js/firebase-config.js';
+import { doSignOut, toast } from '../js/utils.js';
+import {
+  collection, doc, setDoc, getDocs, getDoc, query, where, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+window.handleSignOut = doSignOut;
+
+let currentTeacherId, currentAssignment, studentsList = [], resultsData = {};
+let testsList = []; // dynamic tests list
+
+// ── MODAL ────────────────────────────────────────────────────────
+window.openAddTest  = () => { document.getElementById('new-test-name').value = ''; document.getElementById('modal-add-test').classList.add('open'); };
+window.closeAddTest = () => document.getElementById('modal-add-test').classList.remove('open');
+
+window.saveNewTest = async function() {
+  const name  = document.getElementById('new-test-name').value.trim();
+  const total = parseInt(document.getElementById('new-test-total').value) || 20;
+  if (!name) return toast('Test name likhein', 'error');
+
+  // Generate a key from name e.g. "Monthly Test 1" → "monthly_test_1"
+  const key = name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+
+  // Save test definition to Firestore under assignment doc
+  const assignRef = doc(db, 'assignments', currentAssignment.id);
+  const assignSnap = await getDoc(assignRef);
+  const existingTests = assignSnap.data()?.tests || [];
+
+  // Check duplicate key
+  if (existingTests.find(t => t.key === key)) {
+    return toast('Is naam ka test pehle se hai!', 'error');
+  }
+
+  const updatedTests = [...existingTests, { key, name, total }];
+  await setDoc(assignRef, { tests: updatedTests }, { merge: true });
+
+  testsList = updatedTests;
+  populateTestDropdown();
+  closeAddTest();
+  toast(`Test "${name}" add ho gaya`);
+};
+
+function populateTestDropdown() {
+  const sel = document.getElementById('test-select');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">Select test</option>';
+  testsList.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t.key;
+    o.textContent = `${t.name} (${t.total} marks)`;
+    sel.appendChild(o);
+  });
+  // Restore previous selection if still exists
+  if (prev && testsList.find(t => t.key === prev)) sel.value = prev;
+  // Show/hide table
+  const hasTest = sel.value !== '';
+  document.getElementById('marks-table').style.display  = hasTest ? '' : 'none';
+  document.getElementById('no-test-msg').style.display  = hasTest ? 'none' : '';
+}
+
+// ── TABS ─────────────────────────────────────────────────────────
+window.switchTab = function(btn, pane) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(pane).classList.add('active');
+  if (pane === 'tab-exams') { renderExam('midterm'); renderExam('final'); }
+};
+
+// ── INIT ─────────────────────────────────────────────────────────
+async function init() {
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = '../index.html'; return; }
+    currentTeacherId = user.uid;
+
+    try {
+      const snap = await getDoc(doc(db, 'users', user.uid));
+      const data = snap.data();
+      document.getElementById('teacher-name').textContent = data?.name || 'Teacher';
+      document.getElementById('av-initials').textContent  = (data?.name || 'TC').substring(0,2).toUpperCase();
+    } catch(e) {
+      document.getElementById('teacher-name').textContent = 'Teacher';
+    }
+
+    const asnap = await getDocs(query(collection(db,'assignments'), where('teacherId','==',user.uid)));
+    const assignments = asnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    const sel = document.getElementById('class-dropdown');
+    sel.innerHTML = '<option value="">Select class</option>';
+    assignments.forEach(a => {
+      const o = document.createElement('option');
+      o.value = a.id;
+      o.textContent = `${a.class} ${a.section} — ${a.subject}`;
+      o.dataset.cls     = a.class;
+      o.dataset.section = a.section;
+      o.dataset.subject = a.subject;
+      sel.appendChild(o);
+    });
+  });
+}
+
+// ── LOAD CLASS ───────────────────────────────────────────────────
+window.loadClass = async function(assignId) {
+  if (!assignId) return;
+  const sel = document.getElementById('class-dropdown');
+  const opt = sel.querySelector(`[value="${assignId}"]`);
+  currentAssignment = {
+    id:      assignId,
+    class:   opt.dataset.cls,
+    section: opt.dataset.section,
+    subject: opt.dataset.subject
+  };
+
+  document.getElementById('class-title').innerHTML =
+    `${currentAssignment.class} ${currentAssignment.section} — <span>${currentAssignment.subject}</span>`;
+  document.getElementById('class-sub').textContent      = 'Manage marks, copy status and progress for this class';
+  document.getElementById('stats-row').style.display    = 'block';
+  document.getElementById('main-content').style.display = 'block';
+  document.getElementById('empty-state').style.display  = 'none';
+
+  // Load tests list from assignment doc
+  const assignSnap = await getDoc(doc(db, 'assignments', assignId));
+  testsList = assignSnap.data()?.tests || [];
+  populateTestDropdown();
+
+  // Load students
+  const snap = await getDocs(query(
+    collection(db,'students'),
+    where('class',   '==', currentAssignment.class),
+    where('section', '==', currentAssignment.section)
+  ));
+  studentsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  document.getElementById('st-count').textContent = studentsList.length;
+
+  await loadResults();
+  renderCopy();
+  renderProgress();
+  updateStats();
+};
+
+async function loadResults() {
+  resultsData = {};
+  const snap = await getDocs(collection(db, 'results', currentAssignment.id, 'students'));
+  snap.docs.forEach(d => { resultsData[d.id] = d.data(); });
+}
+
+// ── MARKS TAB ────────────────────────────────────────────────────
+window.renderMarks = function() {
+  const testKey = document.getElementById('test-select').value;
+  if (!testKey) {
+    document.getElementById('marks-table').style.display = 'none';
+    document.getElementById('no-test-msg').style.display = '';
+    return;
+  }
+  document.getElementById('marks-table').style.display = '';
+  document.getElementById('no-test-msg').style.display = 'none';
+
+  const testDef  = testsList.find(t => t.key === testKey) || { total: 20 };
+  const total    = testDef.total;
+  document.getElementById('total-marks').value = total;
+
+  const tbody = document.getElementById('marks-tbody');
+  tbody.innerHTML = studentsList.map(s => {
+    const r   = resultsData[s.id] || {};
+    const val = r.marks?.[testKey] ?? '';
+    const savedTotal = r.testTotals?.[testKey] || total;
+    const pct  = val !== '' ? Math.round((val / savedTotal) * 100) : null;
+    const color = pct === null ? 'var(--muted)' : pct >= 60 ? 'var(--green)' : pct >= 40 ? 'var(--amber)' : 'var(--red)';
+
+    return `<tr class="mark-row">
+      <td style="color:var(--muted);font-size:12px;">${s.rollNo||'—'}</td>
+      <td>${s.name}</td>
+      <td><input type="number" class="form-input inp-sm" id="mark-${s.id}" value="${val}" min="0" max="${savedTotal}" oninput="recalc('${s.id}',${savedTotal})"/></td>
+      <td style="color:var(--muted)">${savedTotal}</td>
+      <td id="pct-${s.id}" style="font-weight:500;color:${color}">${pct !== null ? pct + '%' : '—'}</td>
+      <td id="status-${s.id}"><span class="badge ${val===''?'badge-gray':'badge-green'}">${val===''?'Pending':'Saved'}</span></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:28px;">No students</td></tr>';
+};
+
+window.recalc = function(id, total) {
+  const v   = parseFloat(document.getElementById(`mark-${id}`).value);
+  const pEl = document.getElementById(`pct-${id}`);
+  if (isNaN(v)) { pEl.textContent = '—'; return; }
+  const pct = Math.round(v / total * 100);
+  pEl.textContent = pct + '%';
+  pEl.style.color = pct >= 60 ? 'var(--green)' : pct >= 40 ? 'var(--amber)' : 'var(--red)';
+};
+
+// ── COPY TAB ─────────────────────────────────────────────────────
+function renderCopy() {
+  const tbody = document.getElementById('copy-tbody');
+  tbody.innerHTML = studentsList.map(s => {
+    const r  = resultsData[s.id] || {};
+    const st = r.copyStatus || 'pending';
+    const badge = st==='checked' ? 'badge-teal' : st==='not_submitted' ? 'badge-red' : 'badge-amber';
+    const label = st==='checked' ? 'Checked'   : st==='not_submitted' ? 'Not submitted' : 'Pending';
+    return `<tr>
+      <td style="color:var(--muted);font-size:12px;">${s.rollNo||'—'}</td>
+      <td>${s.name}</td>
+      <td><span class="badge ${badge}">${label}</span></td>
+      <td>
+        <select class="trend-select" id="copy-${s.id}">
+          <option value="checked"       ${st==='checked'       ?'selected':''}>Checked</option>
+          <option value="pending"       ${st==='pending'       ?'selected':''}>Pending</option>
+          <option value="not_submitted" ${st==='not_submitted' ?'selected':''}>Not submitted</option>
+        </select>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:28px;">No students</td></tr>';
+}
+
+// ── PROGRESS TAB ──────────────────────────────────────────────────
+function renderProgress() {
+  const tbody = document.getElementById('progress-tbody');
+  tbody.innerHTML = studentsList.map(s => {
+    const r     = resultsData[s.id] || {};
+    const trend = r.trend || 'stable';
+    const note  = r.note  || '';
+    return `<tr>
+      <td style="color:var(--muted);font-size:12px;">${s.rollNo||'—'}</td>
+      <td>${s.name}</td>
+      <td>
+        <select class="trend-select" id="trend-${s.id}">
+          <option value="improving" ${trend==='improving'?'selected':''}>Improving</option>
+          <option value="stable"    ${trend==='stable'   ?'selected':''}>Stable</option>
+          <option value="declining" ${trend==='declining'?'selected':''}>Declining</option>
+        </select>
+      </td>
+      <td><input class="note-input" id="note-${s.id}" value="${note}" placeholder="Add a note…"/></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:28px;">No students</td></tr>';
+}
+
+// ── EXAMS TAB ────────────────────────────────────────────────────
+function getGrade(pct) {
+  if (pct >= 90) return '<span class="badge badge-green">A+</span>';
+  if (pct >= 80) return '<span class="badge badge-green">A</span>';
+  if (pct >= 70) return '<span class="badge badge-teal">B</span>';
+  if (pct >= 60) return '<span class="badge badge-purple">C</span>';
+  if (pct >= 50) return '<span class="badge badge-amber">D</span>';
+  return '<span class="badge badge-red">F</span>';
+}
+
+window.renderExam = function(type) {
+  const firstWithExam = studentsList.find(s => resultsData[s.id]?.[`${type}Total`]);
+  const savedExamTotal = firstWithExam ? resultsData[firstWithExam.id][`${type}Total`] : null;
+  if (savedExamTotal) document.getElementById(`${type}-total`).value = savedExamTotal;
+  const displayTotal = savedExamTotal || parseInt(document.getElementById(`${type}-total`).value) || 100;
+
+  const tbody = document.getElementById(`${type}-tbody`);
+  tbody.innerHTML = studentsList.map(s => {
+    const r   = resultsData[s.id] || {};
+    const val = r.exams?.[type] ?? '';
+    const tot = r[`${type}Total`] || displayTotal;
+    const pct = val !== '' ? Math.round((val / tot) * 100) : null;
+    return `<tr>
+      <td style="color:var(--muted);font-size:12px;">${s.rollNo||'—'}</td>
+      <td>${s.name}</td>
+      <td><input type="number" class="form-input inp-sm" id="${type}-mark-${s.id}" value="${val}" min="0" max="${tot}" oninput="recalcExam('${type}','${s.id}',${tot})"/></td>
+      <td style="color:var(--muted)">${tot}</td>
+      <td id="${type}-pct-${s.id}" style="font-weight:500;color:${pct===null?'var(--muted)':pct>=60?'var(--green)':pct>=40?'var(--amber)':'var(--red)'}">${pct !== null ? pct+'%' : '—'}</td>
+      <td id="${type}-grade-${s.id}">${pct !== null ? getGrade(pct) : '—'}</td>
+      <td id="${type}-status-${s.id}"><span class="badge ${val===''?'badge-gray':'badge-green'}">${val===''?'Pending':'Saved'}</span></td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:28px;">No students</td></tr>`;
+};
+
+window.recalcExam = function(type, id, total) {
+  const v   = parseFloat(document.getElementById(`${type}-mark-${id}`).value);
+  const pEl = document.getElementById(`${type}-pct-${id}`);
+  const gEl = document.getElementById(`${type}-grade-${id}`);
+  if (isNaN(v)) { pEl.textContent = '—'; gEl.innerHTML = '—'; return; }
+  const pct = Math.round(v / total * 100);
+  pEl.textContent = pct + '%';
+  pEl.style.color = pct >= 60 ? 'var(--green)' : pct >= 40 ? 'var(--amber)' : 'var(--red)';
+  gEl.innerHTML   = getGrade(pct);
+};
+
+// ── STATS ─────────────────────────────────────────────────────────
+function updateStats() {
+  const testKey = document.getElementById('test-select')?.value;
+  let marksCount = 0, copyCount = 0, totalPct = 0;
+
+  studentsList.forEach(s => {
+    const r = resultsData[s.id] || {};
+    if (testKey && r.marks?.[testKey] !== undefined) {
+      const testDef = testsList.find(t => t.key === testKey);
+      const savedTotal = r.testTotals?.[testKey] || testDef?.total || 20;
+      marksCount++;
+      totalPct += Math.round((r.marks[testKey] / savedTotal) * 100);
+    }
+    if (r.copyStatus === 'checked') copyCount++;
+  });
+
+  const n = studentsList.length || 1;
+  document.getElementById('st-marks').textContent  = `${marksCount}/${n}`;
+  document.getElementById('st-copies').textContent = `${copyCount}/${n}`;
+  document.getElementById('st-avg').textContent    = marksCount ? Math.round(totalPct / marksCount) + '%' : '—';
+}
+
+// ── SAVE FUNCTIONS ────────────────────────────────────────────────
+window.saveAllMarks = async function() {
+  const testKey = document.getElementById('test-select').value;
+  if (!testKey) return toast('Pehle test select karein', 'error');
+  const total = parseInt(document.getElementById('total-marks').value) || 20;
+  try {
+    for (const s of studentsList) {
+      const val = document.getElementById(`mark-${s.id}`)?.value;
+      if (val === '' || val === undefined) continue;
+      const parsed = parseFloat(val);
+      if (isNaN(parsed)) continue;
+      await setDoc(
+        doc(db, 'results', currentAssignment.id, 'students', s.id),
+        { marks: { [testKey]: parsed }, testTotals: { [testKey]: total }, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+      document.getElementById(`status-${s.id}`).innerHTML = '<span class="badge badge-green">Saved</span>';
+    }
+    toast('Marks saved');
+    await loadResults(); renderMarks(); updateStats();
+  } catch(e) { toast('Error saving marks', 'error'); }
+};
+
+window.saveAllCopy = async function() {
+  try {
+    for (const s of studentsList) {
+      const val = document.getElementById(`copy-${s.id}`)?.value;
+      if (!val) continue;
+      await setDoc(
+        doc(db, 'results', currentAssignment.id, 'students', s.id),
+        { copyStatus: val, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+    }
+    toast('Copy status saved');
+    await loadResults(); renderCopy(); updateStats();
+  } catch(e) { toast('Error saving', 'error'); }
+};
+
+window.saveAllProgress = async function() {
+  try {
+    for (const s of studentsList) {
+      const trend = document.getElementById(`trend-${s.id}`)?.value;
+      const note  = document.getElementById(`note-${s.id}`)?.value || '';
+      await setDoc(
+        doc(db, 'results', currentAssignment.id, 'students', s.id),
+        { trend, note, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+    }
+    toast('Progress saved');
+    await loadResults(); renderProgress();
+  } catch(e) { toast('Error saving', 'error'); }
+};
+
+window.saveExam = async function(type) {
+  const total = parseInt(document.getElementById(`${type}-total`).value) || 100;
+  try {
+    for (const s of studentsList) {
+      const val = document.getElementById(`${type}-mark-${s.id}`)?.value;
+      if (val === '' || val === undefined) continue;
+      const parsed = parseFloat(val);
+      if (isNaN(parsed)) continue;
+      await setDoc(
+        doc(db, 'results', currentAssignment.id, 'students', s.id),
+        { exams: { [type]: parsed }, [`${type}Total`]: total, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+      document.getElementById(`${type}-status-${s.id}`).innerHTML = '<span class="badge badge-green">Saved</span>';
+    }
+    toast(`${type === 'midterm' ? 'Mid-term' : 'Final exam'} marks saved`);
+    await loadResults(); renderExam(type);
+  } catch(e) { toast('Error saving', 'error'); }
+};
+
+init();
+</script>
+</body>
+</html>

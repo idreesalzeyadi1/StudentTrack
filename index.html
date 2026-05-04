@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Student Progress Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:       #0a0a0f;
+    --surface:  #13131a;
+    --surface2: #1c1c28;
+    --border:   rgba(255,255,255,0.07);
+    --border2:  rgba(255,255,255,0.14);
+    --accent:   #7c6af7;
+    --accent2:  #a594ff;
+    --teal:     #2dd4bf;
+    --amber:    #fbbf24;
+    --text:     #f0f0f8;
+    --muted:    #8888aa;
+    --danger:   #f87171;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,106,247,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,106,247,0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    animation: gridMove 20s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes gridMove {
+    0%   { transform: translateY(0); }
+    100% { transform: translateY(48px); }
+  }
+
+  /* Glow orbs */
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    animation: orbFloat 8s ease-in-out infinite;
+  }
+  .orb-1 {
+    width: 400px; height: 400px;
+    background: rgba(124,106,247,0.18);
+    top: -100px; left: -100px;
+    animation-delay: 0s;
+  }
+  .orb-2 {
+    width: 350px; height: 350px;
+    background: rgba(45,212,191,0.12);
+    bottom: -80px; right: -80px;
+    animation-delay: -4s;
+  }
+  @keyframes orbFloat {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(20px,20px) scale(1.05); }
+  }
+
+  /* Login wrapper */
+  .login-wrap {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 420px;
+    padding: 0 20px;
+    animation: slideUp 0.7s cubic-bezier(.16,1,.3,1) both;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Logo area */
+  .brand {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  .brand-icon {
+    width: 52px; height: 52px;
+    background: linear-gradient(135deg, var(--accent), var(--teal));
+    border-radius: 16px;
+    margin: 0 auto 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .brand-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  .brand-name span { color: var(--accent2); }
+  .brand-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-weight: 300;
+  }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(124,106,247,0.6), transparent);
+  }
+
+  /* Role selector */
+  .role-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    background: var(--surface2);
+    border-radius: 12px;
+    padding: 4px;
+  }
+  .role-btn {
+    flex: 1;
+    padding: 9px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s;
+  }
+  .role-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  /* Form */
+  .form-group { margin-bottom: 16px; }
+  .form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    margin-bottom: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .form-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 14px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .form-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(124,106,247,0.15);
+  }
+  .form-input::placeholder { color: rgba(136,136,170,0.5); }
+
+  /* Submit */
+  .btn-login {
+    width: 100%;
+    margin-top: 8px;
+    padding: 13px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), #9c8bff);
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-login::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .btn-login:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(124,106,247,0.4); }
+  .btn-login:hover::after { opacity: 1; }
+  .btn-login:active { transform: scale(0.98); }
+  .btn-login.loading { opacity: 0.7; pointer-events: none; }
+
+  /* Error */
+  .error-msg {
+    background: rgba(248,113,113,0.1);
+    border: 1px solid rgba(248,113,113,0.25);
+    border-radius: 9px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--danger);
+    margin-bottom: 14px;
+    display: none;
+  }
+  .error-msg.show { display: block; }
+
+  /* Spinner */
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .divider {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    margin: 20px 0 0;
+  }
+  .divider a { color: var(--accent2); text-decoration: none; }
+  .divider a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="login-wrap">
+  <div class="brand">
+    <div class="brand-icon">
+      <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+      </svg>
+    </div>
+    <div class="brand-name">Student<span>Track</span></div>
+    <div class="brand-sub">Progress Management System</div>
+  </div>
+
+  <div class="card">
+    <div class="role-row">
+      <button class="role-btn active" id="btn-admin"   onclick="setRole('admin')">Admin</button>
+      <button class="role-btn"        id="btn-teacher" onclick="setRole('teacher')">Teacher</button>
+      <button class="role-btn"        id="btn-student" onclick="setRole('student')">Student</button>
+    </div>
+
+    <div class="error-msg" id="err-msg"></div>
+
+    <div class="form-group">
+      <label class="form-label">Email address</label>
+      <input class="form-input" id="inp-email" type="email" placeholder="you@school.edu" autocomplete="email"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="form-input" id="inp-pass" type="password" placeholder="Enter your password" autocomplete="current-password"/>
+    </div>
+
+    <button class="btn-login" id="login-btn" onclick="doLogin()">Sign in</button>
+
+    <div class="divider">
+      Forgot password? <a href="#">Reset here</a>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { auth, db } from './js/firebase-config.js';
+  import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  window.currentRole = 'admin';
+
+  // Role switch karo — sirf UI update, placeholder fix bhi
+  window.setRole = function(role) {
+    window.currentRole = role;
+    document.getElementById('btn-admin').classList.toggle('active',   role === 'admin');
+    document.getElementById('btn-teacher').classList.toggle('active', role === 'teacher');
+    document.getElementById('btn-student').classList.toggle('active', role === 'student');
+
+    const placeholders = {
+      admin:   'admin@school.edu',
+      teacher: 'teacher@school.edu',
+      student: 'student@school.edu'
+    };
+    document.getElementById('inp-email').placeholder = placeholders[role];
+    document.getElementById('err-msg').classList.remove('show');
+  };
+
+  // Main login — Firebase auth + Firestore role check
+  window.doLogin = async function() {
+    const email = document.getElementById('inp-email').value.trim();
+    const pass  = document.getElementById('inp-pass').value;
+    const btn   = document.getElementById('login-btn');
+    const err   = document.getElementById('err-msg');
+
+    // Validation
+    if (!email || !pass) {
+      err.textContent = 'Please enter your email and password.';
+      err.classList.add('show');
+      return;
+    }
+
+    // Loading state
+    btn.classList.add('loading');
+    btn.innerHTML = '<span class="spinner"></span>Signing in…';
+    err.classList.remove('show');
+
+    try {
+      // Step 1: Firebase Authentication
+      const cred = await signInWithEmailAndPassword(auth, email, pass);
+
+      // Step 2: Firestore se role fetch karo
+      const snap = await getDoc(doc(db, 'users', cred.user.uid));
+
+      if (!snap.exists()) {
+        // User doc nahi mila — unauthorized
+        await auth.signOut();
+        err.textContent = 'Account not found in system. Contact admin.';
+        err.classList.add('show');
+        btn.classList.remove('loading');
+        btn.innerHTML = 'Sign in';
+        return;
+      }
+
+      const role = snap.data()?.role;
+
+      // Step 3: Role ke hisaab se redirect
+      if (role === 'admin') {
+        window.location.href = 'pages/admin.html';
+      } else if (role === 'teacher') {
+        window.location.href = 'pages/teacher.html';
+      } else if (role === 'student') {
+        window.location.href = 'pages/student.html';
+      } else {
+        // Unknown role — block karo
+        await auth.signOut();
+        err.textContent = 'Unauthorized access. Contact your administrator.';
+        err.classList.add('show');
+        btn.classList.remove('loading');
+        btn.innerHTML = 'Sign in';
+      }
+
+    } catch(e) {
+      // Firebase error codes ko readable messages mein convert karo
+      const messages = {
+        'auth/user-not-found':    'No account found with this email.',
+        'auth/wrong-password':    'Incorrect password. Please try again.',
+        'auth/invalid-email':     'Please enter a valid email address.',
+        'auth/too-many-requests': 'Too many attempts. Please try again later.',
+        'auth/invalid-credential':'Invalid email or password.',
+      };
+      err.textContent = messages[e.code] || e.message;
+      err.classList.add('show');
+      btn.classList.remove('loading');
+      btn.innerHTML = 'Sign in';
+    }
+  };
+
+  // Enter key support
+  document.getElementById('inp-pass').addEventListener('keydown', e => {
+    if (e.key === 'Enter') window.doLogin();
+  });
+</script>
+</body>
+</html>
